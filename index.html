@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>折纸编织图解生成器 · Origami Stitch Studio</title>
+<style>
+:root{
+  --bg:#FBFAF6; --card:#ffffff; --ink:#26324B; --muted:#7d8494;
+  --line:#E3E1D8; --line2:#EFEDE6; --accent:#B05A3C; --accent-bg:#FAF1EB;
+  --cream:#F2E7D5; --teal:#2C7A6B; --gridln:rgba(38,50,75,.06);
+  --red:#C8302E; --tintA:#EFD9C2; --tintB:#CBD8EB; --tintC:#D2E1CE; --nostitch:#EBE9E2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);
+  background-image:linear-gradient(var(--gridln) 1px,transparent 1px),linear-gradient(90deg,var(--gridln) 1px,transparent 1px);
+  background-size:18px 18px;color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  line-height:1.65;-webkit-text-size-adjust:100%;padding-bottom:60px}
+.wrap{max-width:1400px;margin:0 auto;padding:0 16px}
+.layout{display:block}
+@media(min-width:1000px){
+  .layout{display:grid;grid-template-columns:322px minmax(0,1fr);gap:22px;align-items:start}
+  .side{position:sticky;top:70px;max-height:calc(100vh - 82px);overflow-y:auto}
+  .side .grid{grid-template-columns:1fr}
+}
+
+/* ---- 页头：与光栅同一套 ---- */
+header{text-align:center;padding:76px 16px 8px}
+.eyebrow{font-size:11px;letter-spacing:.34em;color:var(--accent);font-weight:700;margin-bottom:12px}
+h1{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:38px;font-weight:900;line-height:1.18;margin:0}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{font-size:13.5px;color:var(--muted);margin:14px auto 30px;max-width:440px}
+.homebtn{position:fixed;top:14px;left:14px;z-index:50;display:inline-flex;align-items:center;gap:7px;min-height:40px;
+  background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);
+  padding:6px 14px 6px 11px;font-size:12.5px;font-weight:700;color:var(--ink);text-decoration:none}
+.homebtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.homebtn:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+/* ---- 壹贰叁 + 面板：与光栅同一套 ---- */
+.stepline{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;width:calc(100% + 4px);
+  border-bottom:1.5px solid var(--ink);padding-bottom:8px}
+.stepline:first-child{margin-top:0}
+.stepnum{font-family:"Songti SC","Noto Serif SC",serif;font-size:24px;font-weight:900;color:var(--accent);line-height:1}
+.stepline h3{font-family:"Songti SC","Noto Serif SC",serif;font-size:17px;font-weight:800;margin:0}
+.stepline small{color:var(--muted);font-size:11.5px}
+.panel{background:#fff;border:2px solid var(--ink);border-radius:14px;padding:14px;box-shadow:4px 4px 0 var(--ink)}
+.side .stepline{display:block;margin-top:0}
+.side .stepline .stepnum{margin-right:8px;vertical-align:-1px}
+.side .stepline h3{display:inline;font-size:16px}
+.side .stepline small{display:block;margin-top:1px;line-height:1.45}
+.f>label i{font-style:normal;font-weight:600;font-size:10px;color:var(--muted);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;margin-left:6px;letter-spacing:.02em}
+.sw{white-space:nowrap}
+
+/* ---- 参数：输入框贴在标签右侧，纵向压缩 ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 18px}
+.f{margin:0}
+.f+.f{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
+.f>label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin:0;letter-spacing:.01em}
+.ctl{margin-left:auto;display:inline-flex;align-items:center;gap:5px;flex:none}
+.ctl em{font-style:normal;font-weight:400;font-size:11.5px;color:var(--muted)}
+.hint{font-size:11px;color:var(--muted);line-height:1.45;margin-top:3px}
+.hint.on{color:var(--accent)}
+input[type=number]{width:64px;padding:4px 6px;border:1.5px solid var(--ink);border-radius:7px;font-size:13px;
+  background:#fff;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700;text-align:center}
+input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+input[type=number].bad{border-color:var(--red);background:#fdecea;color:#7a1a12}
+input[type=number]:disabled{opacity:.38;border-color:var(--line);background:var(--bg)}
+.err{display:none;font-size:11px;color:var(--red);font-weight:700;margin-top:3px;line-height:1.4}
+.seg{display:flex;border:1.5px solid var(--ink);border-radius:9px;overflow:hidden;width:fit-content}
+.seg button{border:0;background:#fff;color:var(--ink);padding:5px 13px;font-size:12.5px;cursor:pointer;border-right:1.5px solid var(--ink);font-weight:600}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+.seg.g2{display:block;width:100%;font-size:0;line-height:0;margin-top:5px}
+.seg.g2 button{display:inline-block;width:50%;vertical-align:top;
+  border-right:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);
+  padding:7px 4px;white-space:nowrap;font-size:12.5px;line-height:1.4;text-align:center}
+.seg.g2 button:nth-child(2n){border-right:0}
+.seg.g2 button:nth-last-child(-n+2){border-bottom:0}
+.sw{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;font-weight:700}
+.sw input{width:15px;height:15px;accent-color:var(--accent)}
+
+.stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.stat{flex:1 1 78px;background:var(--bg);border-radius:7px;padding:5px 8px}
+.stat .k{font-size:10px;color:var(--muted);line-height:1.3}
+.stat .v{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.35}
+details.tip{margin-top:10px;font-size:11.5px}
+details.tip summary{font-family:"Songti SC","Noto Serif SC",serif;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--accent)}
+details.tip .tipbody{color:var(--muted);line-height:1.55;padding-top:6px}
+details.tip .tipbody b{color:var(--ink)}
+
+.note{background:var(--accent-bg);border-left:3px solid var(--accent);padding:9px 12px;font-size:12px;line-height:1.55;margin:12px 0 0;border-radius:0 6px 6px 0}
+.warn{background:#fdecea;border-left-color:var(--red);color:#7a1a12}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:10px;margin-top:10px}
+/* 图解两种看法：适应屏幕＝整幅缩进来，绝不跑出屏幕；原寸＝格子保持原大小，左右滑 */
+#chart svg{display:block;margin:0 auto}
+#chart.fit{overflow-x:hidden}
+#chart.fit svg{max-width:100%;height:auto}
+#chart.nat{overflow-x:auto}
+#chart.nat svg{max-width:none}
+.viewrow{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:10px 0 0;flex-wrap:wrap}
+.vhint{font-size:11.5px;color:var(--accent);margin-right:auto;line-height:1.4}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2px 16px;margin:4px 0 12px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;line-height:1.3}
+.lg svg{flex:none}
+.tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tabs button{border:1.5px solid var(--ink);background:#fff;color:var(--ink);padding:5px 15px;border-radius:8px;font-size:12.5px;cursor:pointer;font-weight:700}
+.tabs button.on{background:var(--ink);color:#fff}
+.act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.act button{border:1.5px solid var(--ink);background:#fff;color:var(--ink);padding:6px 14px;border-radius:8px;font-size:12.5px;cursor:pointer;font-weight:600}
+.act button:hover{background:var(--bg)}
+#txtout{column-count:2;column-gap:22px;font-size:12.5px;line-height:1.55;max-height:520px;overflow-y:auto;padding-right:6px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='112'><text x='6' y='64' transform='rotate(-20 150 56)' font-family='sans-serif' font-size='14' font-weight='700' fill='%2326324B' fill-opacity='0.055'>翡晔楼 · Origami Stitch Studio</text></svg>");
+  background-repeat:repeat;background-attachment:local}
+#txtout p{margin:0 0 3px;break-inside:avoid}
+#txtout .h{font-family:"Songti SC","Noto Serif SC",serif;color:var(--accent);font-weight:700;margin:10px 0 4px;break-inside:avoid}
+#txtout .h2{font-family:"Songti SC","Noto Serif SC",serif;color:#fff;background:var(--ink);font-weight:700;
+  font-size:13.5px;margin:14px 0 8px;padding:4px 11px;border-radius:5px;break-inside:avoid;letter-spacing:.04em}
+#txtout .h2:first-child{margin-top:0}
+#txtout .ex{background:var(--accent-bg);border-left:3px solid var(--accent);padding:8px 11px;margin:0 0 7px;
+  border-radius:0 5px 5px 0;line-height:1.6;break-inside:avoid}
+#txtout .rn{font-weight:700;white-space:nowrap}
+canvas{max-width:100%;display:block;margin:0 auto;cursor:grab;touch-action:none}
+canvas:active{cursor:grabbing}
+.simcap{text-align:center;color:var(--muted);font-size:11.5px;margin:6px 0 0}
+@media (max-width:640px){
+  /* 窄屏下教学图整幅缩进来，不横向滑：它信息少，缩小仍看得清 */
+  #schem{overflow:hidden}
+  #schem svg{width:100%;max-width:100%}
+  .viewrow{justify-content:space-between}
+  .vhint{margin-right:0;flex:1 1 100%;order:2}
+}
+footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.8;padding:26px 16px 10px;border-top:1px solid var(--line);margin-top:30px}
+@media(max-width:1100px){#txtout{column-count:1}}
+@media(max-width:640px){h1{font-size:27px}header{padding:72px 12px 4px}.homebtn{top:10px;left:10px}}
+</style>
+</head>
+<body>
+<a class="homebtn" href="https://REPLACE_WITH_TOOLBOX_SITE.pages.dev/">← 翡晔楼编织工具箱</a>
+<header>
+  <div class="eyebrow">ORIGAMI STITCH STUDIO</div>
+  <h1>折纸编织<br><em>图解</em>生成器</h1>
+  <p class="sub">调好参数，自动生成折纸编织图解。平面的织物，折出立体的痕迹。</p>
+</header>
+
+<div class="wrap">
+
+<div class="layout">
+<aside class="side">
+<div class="stepline"><span class="stepnum">壹</span><h3>设定参数</h3><small>折面宽定折纹，折线数定宽度，模块数定长度</small></div>
+<div class="panel">
+  <div class="grid">
+    <div class="f"><label for="S">折面宽 S<i>4–60</i><span class="ctl"><input type="number" id="S" min="4" max="60" step="1" value="6"><em>针</em></span></label>
+      <div class="err" id="errS"></div></div>
+    <div class="f"><label for="N">折线数 N<i>奇数 1–99</i><span class="ctl"><input type="number" id="N" min="1" max="99" step="2" value="3"><em>条</em></span></label>
+      <div class="err" id="errN"></div><div class="hint" id="Nv"></div></div>
+    <div class="f"><label for="P">平褶段行数 P<i>偶数 0–200</i><span class="ctl"><input type="number" id="P" min="0" max="200" step="2" value="4"><em>行</em></span></label>
+      <div class="err" id="errP"></div></div>
+    <div class="f"><label for="M">模块数<i>1–60</i><span class="ctl"><input type="number" id="M" min="1" max="60" step="1" value="4"><em>个</em></span></label>
+      <div class="err" id="errM"></div></div>
+    <div class="f"><label>形状</label>
+      <div class="seg g2" id="shape">
+        <button data-v="rect" class="on">长方形 A</button>
+        <button data-v="rectb">长方形 B</button>
+        <button data-v="tri">三角形 ▽</button>
+        <button data-v="tridn">三角形 △</button>
+        <button data-v="side">单边左加针</button>
+        <button data-v="sider">单边右加针</button>
+      </div>
+      <label style="margin-top:7px;display:block"><span class="sw"><input type="checkbox" id="tip" checked> 尖角起／尖角收</span></label>
+      <div class="hint" id="tiphint">此时<b>折线数由模块数决定</b>，上面的折线数不生效。</div></div>
+    <div class="f"><label><span class="sw"><input type="checkbox" id="gOn"> 使用密度（可选）</span></label>
+      <div class="row" id="gBox" style="display:none;gap:6px;align-items:center;margin-top:5px">
+        <span style="font-size:11.5px;color:var(--muted)">10cm =</span>
+        <input type="number" id="gSt" value="30" min="8" max="80" step="0.5" aria-label="每10厘米针数" aria-describedby="errgSt"><span style="font-size:11.5px">针</span>
+        <input type="number" id="gRw" value="55" min="10" max="150" step="0.5" aria-label="每10厘米行数" aria-describedby="errgRw"><span style="font-size:11.5px">行</span>
+      </div><div class="err" id="errgSt"></div><div class="err" id="errgRw"></div></div>
+  </div>
+  <div class="note warn" id="vnote" style="display:none"></div>
+  <div class="stats" id="stats"></div>
+  <div class="note" id="pnote" style="display:none"></div>
+  <div class="note" id="yarnbox" style="display:none"></div>
+</div>
+
+</aside>
+<div class="main">
+<div class="stepline"><span class="stepnum">贰</span><h3>立体模拟</h3><small>按住画面拖动可以转视角</small></div>
+<div class="panel">
+  <div id="schem" style="margin:0 0 12px"></div>
+  <canvas id="sim" width="960" height="340"></canvas>
+  <div class="simcap">只是模拟效果，不是实际成品</div>
+  <div class="act"><button id="resetView">回正视角</button></div>
+</div>
+
+<div class="stepline"><span class="stepnum">叁</span><h3>图解与文字解</h3><small>正面视角 · 单数行从右往左读 · 双数行从左往右读</small></div>
+<div class="panel">
+  <div class="tabs">
+    <button id="tabC" class="on">图解</button>
+    <button id="tabT">文字解</button>
+    <span style="flex:1"></span>
+    <div class="seg" id="cmode">
+      <button data-v="one">只显示一组</button>
+      <button data-v="all" class="on">展开全部</button>
+    </div>
+  </div>
+  <div id="paneC">
+    <div class="legend" id="legend"></div>
+    <div class="viewrow"><span class="vhint" id="zhint"></span>
+      <div class="seg" id="zmode">
+        <button data-v="fit" class="on">适应屏幕</button>
+        <button data-v="nat">原寸</button>
+      </div></div>
+    <div class="note" style="margin:0 0 4px"><b>图解为正面视角</b>：符号画的是从正面看到的样子。<b>格子下面的短横线＝这一格正面看是上针</b>（起伏针的双数行整行都是），它标的是针目外观，不是「这一行是反面行」。<b>交叉照图同方向织</b>：图上是右交叉就织右交叉，反面行也一样，两针都织下针 —— 1/1 交叉翻到背面，左右镜像和上下层对调两次抵消，方向不变。橘色横线＝模块交界：模块行数为奇数，织完后正反面自动对调，所以下一模块所有符号整体反转，照行号织下去即可。</div>
+    <div class="note" id="clipnote" style="display:none;margin:6px 0 0"></div>
+    <div class="scroll" id="chart"></div>
+    <div class="act"><button id="dlChart">⬇ 下载图解 PNG</button></div>
+  </div>
+  <div id="paneT" style="display:none">
+    <div class="note" style="margin:0 0 10px"><b>文字解写的是手上的动作</b>。切到「只显示一组」时写成<b>逐行 → 重复指令 → 逐行</b>三段，中段给的是规律而不是抄一遍；「展开全部」则是逐行完整版。交叉针一律写成<b>右交叉／左交叉</b>（＝英式 <b>1/1 RC／1/1 LC</b>，真交叉的小麻花，不是 RT／LT 那种拧针），不用日式「左上／右上1目交差」，因为两套命名正好相反。<b>名称和图上画的方向一致</b>：反面行照图同方向织，两针都织下针，不需要反过来。</div>
+    <div id="txtout"></div>
+    <div class="act"><button id="dlTxt">⬇ 下载文字解 PNG</button></div>
+  </div>
+</div>
+
+</div>
+</div>
+<footer>
+  © 2026 翡晔楼 · Origami Stitch Studio 折纸编织图解生成器<br>
+  设计开发：小红书 @翡晔楼 · 仅供个人使用，禁止商用
+</footer>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const K=n=>({t:'k',n});
+const baseShape=shape=>shape==='rectb'?'rect':shape==='sider'?'side':shape;
+
+/* ---------- pattern generator ---------- */
+function build(P){
+  const S=P.S, MOD=P.M, tip=!!P.tip;
+  /* 六种模式 ＝ 四种骨架 × 两个变体开关。
+     长方形A／B 只差峰谷相位；单边左／右 是镜像。骨架名沿用旧值，
+     这样下面所有 shape==='rect' / 'side' 的分支都不用动。 */
+  const variant = P.shape;
+  const rectB = (variant==='rectb'), sideR = (variant==='sider');
+  const shape = baseShape(variant);
+  let pleat=P.P, noteMsg='';
+  const pmf = shape==='rect'?0:(shape==='side'?1:2);
+  /* 塑形行不再局限在平褶段里，而是铺满整个模块（每 2 行一次，共 S 次），
+     所以模块只要排得下 S 个塑形行就成立：modRows≥2S-1，即 pleat≥2。
+     这样边缘每 2 行稳定加 1 针，斜边是平滑斜线而不是台阶；
+     折线也不必先直上直下一段再之字，菱形随之变扁。 */
+  /* 三角形和单边加针：塑形行均匀铺满整个模块，不锁死奇偶，所以 P 可以到 0。
+     长方形没有塑形行，本来就没有下限。 */
+  /* 三角形：S 个塑形行均匀铺满整个模块 → 两条斜边是平滑斜线。
+     单边加针：沿用旧规则，加针只落在平褶段里、每 2 行一次，之字段一针不加，
+     所以布边是「斜一段、直一段」的阶梯，长得也慢。之字（向外张开）两者相同。
+     因此单边的 P 有下限 2S：塑形行的奇偶逐模块交替，奇偶两半都要排得下 S 个。 */
+  const evenSpread = (shape==='tri'||shape==='tridn');
+  /* 单边不再要求「一个模块正好长满一条折线」：平褶段有几行就加几针（每 2 行 1 针），
+     折线什么时候长出来，由布边什么时候越过 kS+1 这条列决定，可以跨好几个模块。
+     P 越小，加针占整个模块的比例越低（之字段 2S-3 行恒定不加），斜边就越陡。 */
+  if(shape==='side' && pleat<2){ pleat=2;
+    noteMsg='单边加针的平褶段行数至少 2 行（一个模块至少要能加 1 针）。'; }
+  const gain = shape==='side' ? pleat/2 : S;   // 单边：每个模块在加针侧长几针
+  const modRows = pleat + 2*S - 3;
+  let startN, endN;
+  if(shape==='rect'){ startN=endN=P.N; }
+  else if(shape==='tridn'){ endN=(tip?1:P.N); startN=endN+pmf*MOD; }
+  else if(shape==='tri'){ startN=(tip?1:P.N); endN=startN+pmf*MOD; }
+  else { startN=(tip?1:P.N); endN=startN+Math.ceil(MOD*gain/S); }
+  const maxN=Math.max(startN,endN);
+  const Wc=S*(maxN+1)+1;
+  /* 22b：单边加针的峰谷分组以「固定边」为锚（k=0 就是布边那一列）。
+     以前跟着正中那条折线走，模块数一变整幅峰谷就会整体对调。 */
+  /* 单边的峰谷分组以「固定边」为锚：左加针固定边在 k=0，右加针在 k=maxN+1 */
+  const centerK = shape==='side' ? (sideR?maxN+1:0) : Math.round((maxN+1)/2);
+  const foldPos=k=>k*S+1;
+  /* 峰谷分组的相位按形状分开：
+     三角形／单边用「中心那条折线会分叉」的相位（尖角中心线是峰折）；
+     长方形保留原相位 —— 它先出过成品，翻相位会变成另一块布。 */
+  const isA = shape==='rect' ? (k=>Math.abs(k-centerK)%2===(rectB?1:0))
+                             : (k=>Math.abs(k-centerK)%2===0);
+  /* 塑形行的奇偶：让加针／减针避开折线所在的那一列 */
+  const parOf=Nm=>{
+    let kk=null;
+    if(shape==='tri') kk=centerK+(Nm+1)/2;
+    else if(shape==='tridn') kk=centerK+(Nm-1)/2;
+    else if(shape==='side') kk = sideR ? (maxN-Nm) : (Nm+1);
+    return kk===null?true:!isA(kk);
+  };
+  const win=(n)=>{
+    if(shape==='rect') return [1,Wc];
+    if(shape==='side') return sideR ? [Wc-n+1,Wc] : [1,n];
+    const off=(Wc-n)/2; return [off+1,off+n];
+  };
+  const rows=[]; let abs=0; let coStitches=S*(startN+1)+1;
+
+  function emit(n,opts){
+    // 基础段不占行号（比照 Noro / Raingelt），且定为反面行，
+    // 这样它上面那一行就是第 1 行、正面行，全篇奇偶与未加基础段时一致。
+    let no, absOdd;
+    /* 三角形／单边：基础段计入行号，整幅正反面随之对调，
+       尖角的中心折线变成峰折（下针）。长方形维持原来的编号。 */
+    if(opts.plain){
+      if(shape==='side'){ no=0; absOdd=true; }          // 单边：再翻一次面
+      else if(shape!=='rect'){ abs++; no=abs; absOdd=abs%2===1; }
+      else { no=0; absOdd=false; }
+    }
+    else { abs++; no=abs; absOdd=abs%2===1; }
+    const [lo,hi]=win(n);
+    const active=[]; for(let k=1;k<=maxN;k++){const p=foldPos(k); if(p>lo&&p<hi) active.push(k);}
+    const As=active.filter(isA).map(foldPos), Bs=active.filter(k=>!isA(k)).map(foldPos);
+    /* 之字用的 A 组还要算上布边外那两条「虚拟折线」（第 1 针、第 Wc 针本来就是 A 位），
+       它们朝内的那半条分叉落在布内，补上边缘区才不会是空的；超出布边的部分裁掉。 */
+    const Az=[]; for(let k=0;k<=maxN+1;k++){ if(isA(k)) Az.push(foldPos(k)); }
+    const cell={};
+    const put=(x,v)=>{ if(x>lo&&x<hi) cell[x]=v; };
+    /* 交叉占两列，先攒成候选，等塑形针和滑针落位后再决定放不放。
+       fold ＝ 这次交叉之后折线落在哪一列（让位时折线退回单列上针，不让它断） */
+    const xs=[];
+    const putX=(x,t,fold)=>{ if(x>lo && x+1<hi) xs.push({x,t,fold}); };
+    const zi=opts.zi;
+    if(opts.plain){ /* 基础建立行：整行下针，不放折线 */ }
+    else if(zi===null||zi<=0){ (opts.purlA?As:Bs).forEach(f=>cell[f]='p'); }
+    else if(zi===1){ Az.forEach(f=>{put(f-1,'p');put(f,'p');put(f+1,'p');}); }
+    else if(zi%2===0){ const j=zi/2;
+      Bs.forEach(f=>cell[f]='p');
+      Az.forEach(f=>{put(f,'p');putX(f-j-1,'RC',f-j-1);putX(f+j,'LC',f+j+1);}); }
+    else { const mm=(zi+1)/2; Az.forEach(f=>{put(f-mm,'p');put(f+mm,'p');}); }
+    /* 塑形针、滑针是硬占位 */
+    if(opts.inc){ if(opts.both) cell[lo+1]='inc';
+      cell[(!opts.both && sideR) ? lo+1 : hi-1]='inc'; }
+    if(opts.dec){ if(opts.both) cell[lo+1]='decR'; cell[hi-1]='decL'; }  /* 减针方向与斜边平行 */
+    if(opts.dec3) cell[(lo+hi)>>1]='dec3';
+    cell[absOdd?hi:lo]='sl';
+    /* 交叉压到塑形针或边缘滑针上时让位：那一格织塑形针，折线退回单列上针 */
+    const hard=c=>{const v=cell[c];return v==='inc'||v==='decL'||v==='decR'||v==='dec3'||v==='sl';};
+    xs.forEach(q=>{
+      if(hard(q.x)||hard(q.x+1)){ if(!hard(q.fold)) put(q.fold,'p'); return; }
+      cell[q.x]=q.t;
+    });
+    const cells=[]; let c=lo;
+    while(c<=hi){ const v=cell[c];
+      if(v==='RC'||v==='LC'){cells.push({c,t:v,span:2});c+=2;}
+      else if(v){cells.push({c,t:v});c+=1;}
+      else {cells.push({c,t:'k'});c+=1;} }
+    rows.push({no,n,lo,hi,cells,mr:opts.mr,m:opts.m,absOdd,As,Bs,active,zi:(zi===null?0:zi),
+      faceSign:opts.faceSign,sect:opts.sect});
+    return n;
+  }
+
+  // ---- 基础建立行 ----
+  // 起针之后先平织一行（全下针）。这一行以前没画，导致全篇正反面整体错开一行。
+  const n0=S*(startN+1)+1;
+  const tipStart=((shape==='tri'||shape==='side') && tip);
+  coStitches = tipStart ? 3 : n0;
+  emit(coStitches,{zi:null,plain:true,mr:0,m:0,faceSign:1,sect:'base'});
+
+  // ---- 起头尖角 ＝ 截短的「第 0 模块」----
+  // 取模块 0 的最后 tipRows 行：凸凹与第 1 模块相反（模块行数是奇数，翻面自动完成），
+  // 末尾自带一整段之字，加针行沿用模块的塑形规则，全篇只有一种加针写法。
+  const tipSteps = tipStart ? (n0-3)/pmf : 0;
+  const tipRows  = 2*tipSteps;
+  if(tipStart){
+    const par0=parOf(startN-pmf);
+    let n=3;
+    for(let t=1;t<=tipRows;t++){
+      /* 尖角可能比一个模块还长（P 小的时候），所以要环绕取模：
+         尖角＝把模块无限往下延续后、最后 tipRows 行。 */
+      const mr=((modRows-tipRows+t-1)%modRows+modRows)%modRows+1, mrOdd=mr%2===1;
+      /* 尖角的加针同样要均匀铺满，不能沿用「固定奇偶」——
+         尖角行号是环绕取模出来的，奇偶和 t 不一定同步，会漏掉一次加针。 */
+      const doInc = n<n0 &&
+        Math.floor(t*tipSteps/tipRows) > Math.floor((t-1)*tipSteps/tipRows);
+      if(doInc) n+=pmf;
+      const zi=mr-pleat;
+      emit(n,{zi:(zi<=0?null:zi),purlA:mrOdd,inc:doInc,both:(shape!=='side'),
+              mr,m:0,faceSign:1,sect:'tip'});
+    }
+  }
+
+  // ---- modules ----
+  let nCur=n0;
+  for(let m=1;m<=MOD;m++){
+    const Nm = shape==='tridn' ? startN-pmf*(m-1)
+             : shape==='side'   ? startN+Math.floor((m-1)*gain/S)
+             : startN+pmf*(m-1);
+    const shapeParOdd = parOf(Nm);
+    const modStart=abs+1, faceSign=(modStart%2===1)?1:-1;
+    let done=0;
+    for(let mr=1;mr<=modRows;mr++){
+      const mrOdd=mr%2===1;
+      let doShape=false;
+      if(pmf>0 && done<gain){
+        if(evenSpread){
+          /* 三角形：S 个塑形行均匀铺满整个模块，多数仍是每 2 行一次，
+             模块行数不够时会有几处落在连续两行上。 */
+          const want=Math.round((done+0.5)*modRows/S);
+          if(mr>=want && (mrOdd===shapeParOdd || mr>=want+1)){ doShape=true; done++; }
+        } else if(mr<=pleat && mrOdd===shapeParOdd){ doShape=true; done++; }
+      }
+      if(doShape) nCur += (shape==='tridn'? -pmf : pmf);
+      const zi=mr-pleat;
+      emit(nCur,{zi:(zi<=0?null:zi),purlA:mrOdd,
+        inc:(doShape && shape!=='tridn'),dec:(doShape && shape==='tridn'),
+        both:(shape!=='side'),mr,m,faceSign,sect:'mod'});
+    }
+  }
+
+  // ---- 收尾尖角 ＝「第 MOD+1 模块」的开头几行（平褶段，不出之字）----
+  // 凸凹接着上一个模块算，不再每次从 purlA=true 重来。
+  // 最后 5→3 那一行两个并针本来会挤在同一格，改成中心一次中上 3 并针。
+  if(shape==='tridn' && tip){
+    const parE=parOf(startN-pmf*MOD);
+    let n=nCur, t=0;
+    while(n>3){
+      t++; const mrOdd=t%2===1, doDec=(mrOdd===parE);
+      let three=false;
+      if(doDec){ if(n-2===3) three=true; n-=2; }
+      emit(n,{zi:null,purlA:mrOdd,dec:(doDec&&!three),dec3:three,both:true,
+              mr:t,m:MOD+1,faceSign:1,sect:'tip'});
+    }
+  }
+  return {rows,co:coStitches,Wc,S,finalN:maxN,startN,endN,pleat,modRows,foldPos,isA,centerK,noteMsg,shape,variant,sideR,rectB,MOD,tip};
+}
+
+/* ---------- symbols ---------- */
+function bar(x,y,w){return `<line x1="${x+w*0.25}" y1="${y+w/2}" x2="${x+w*0.75}" y2="${y+w/2}" stroke="#26324B" stroke-width="1.5"/>`;}
+function ub(x,y,w,k){const yy=y+w*0.87;let g='';const cs=k===2?[x+w/2,x+w*1.5]:[x+w/2];
+  cs.forEach(cx=>{g+=`<line x1="${cx-w*0.29}" y1="${yy}" x2="${cx+w*0.29}" y2="${yy}" stroke="#26324B" stroke-width="1.5"/>`;});return g;}
+function cross(x,y,lean,w){const p=w*0.16,x2=x+2*w;
+  const A=`M${x+p},${y+w-p} L${x2-p},${y+p}`,B=`M${x+p},${y+p} L${x2-p},${y+w-p}`;
+  const o=lean==='R'?A:B,u=lean==='R'?B:A;
+  return `<path d="${u}" stroke="#26324B" stroke-width="0.8" fill="none"/><path d="${o}" stroke="#fff" stroke-width="${w*0.26}" fill="none"/><path d="${o}" stroke="#26324B" stroke-width="1.9" fill="none"/>`;}
+function dec(x,y,kind,w){
+  const o=kind==='R'?`M${x+w*0.84},${y+w*0.86} L${x+w*0.16},${y+w*0.14}`:`M${x+w*0.16},${y+w*0.86} L${x+w*0.84},${y+w*0.14}`;
+  const u=kind==='R'?`M${x+w*0.16},${y+w*0.86} L${x+w*0.5},${y+w*0.5}`:`M${x+w*0.84},${y+w*0.86} L${x+w*0.5},${y+w*0.5}`;
+  return `<path d="${u}" stroke="#26324B" stroke-width="1.4" fill="none"/><path d="${o}" stroke="#fff" stroke-width="${w*0.24}" fill="none"/><path d="${o}" stroke="#26324B" stroke-width="1.8" fill="none"/>`;}
+/* JIS 扭针：上方一个圈，两脚在下方交叉后向两侧伸出。
+   与《折纸披肩》PDF 用的是同一个函数，两边符号统一。
+   脚落在 0.7w，下方留白给「正面看是上针」的短横线。 */
+function twm(x,y,w){const cx=x+w/2, a=w*0.2, cy=y+w*0.4, fy=y+w*0.7;
+  return `<path d="M${cx-w*0.36},${fy} C${cx-w*0.1},${fy} ${cx+a*1.15},${cy+a*1.2} ${cx+a},${cy} C${cx+a*0.95},${cy-a*1.1} ${cx-a*0.95},${cy-a*1.1} ${cx-a},${cy} C${cx-a*1.15},${cy+a*1.2} ${cx+w*0.1},${fy} ${cx+w*0.36},${fy}" fill="none" stroke="#26324B" stroke-width="1.6" stroke-linejoin="round"/>`;}
+function cdd(x,y,w){const cx=x+w/2;
+  const l=`M${x+w*0.15},${y+w*0.88} L${cx},${y+w*0.44}`, r=`M${x+w*0.85},${y+w*0.88} L${cx},${y+w*0.44}`;
+  const st=`M${cx},${y+w*0.9} L${cx},${y+w*0.1}`;
+  return `<path d="${l}" stroke="#26324B" stroke-width="1.3" fill="none"/>`
+   +`<path d="${r}" stroke="#26324B" stroke-width="1.3" fill="none"/>`
+   +`<path d="${st}" stroke="#fff" stroke-width="${w*0.22}" fill="none"/>`
+   +`<path d="${st}" stroke="#26324B" stroke-width="1.7" fill="none"/>`;}
+function slip(x,y,w){return `<path d="M${x+w*0.28},${y+w*0.3} L${x+w/2},${y+w*0.72} L${x+w*0.72},${y+w*0.3}" fill="none" stroke="#26324B" stroke-width="1.3"/>`;}
+
+function legendHtml(){
+  const c=19,b=`<rect x=".5" y=".5" width="18" height="18" fill="#fff" stroke="#D3D0C7"/>`;
+  const b2=`<rect x=".5" y=".5" width="37" height="18" fill="#fff" stroke="#D3D0C7"/>`;
+  const L=[
+   [b,'<b>下针</b>（正面看为下针）单数行织下针／双数行织上针',20],
+   [b+bar(0,0,c),'<b>上针</b>（正面看为上针）单数行织上针／双数行织下针',20],
+   [b2+cross(0,0,'R',c),'<b>右交叉 1/1 RC</b>　压在上面的那针从<b>左下走到右上</b>。就是 2 针的小麻花：把右边那针移到麻花针上<b>放在后面</b>，织左边那针，再织麻花针上那针',39],
+   [b2+cross(0,0,'L',c),'<b>左交叉 1/1 LC</b>　压在上面的那针从<b>右下走到左上</b>。同样是 2 针小麻花，只是麻花针<b>放在前面</b>',39],
+   [b2+cross(0,0,'R',c)+ub(0,0,c,2),'<b>上针版右交叉</b>　符号下的<b>短横线＝这一格正面看是上针</b>（每根斜线各带一小段）。标的是外观，不改动作：仍旧织右交叉，两针都织下针',39],
+   [b2+cross(0,0,'L',c)+ub(0,0,c,2),'<b>上针版左交叉</b>　同理，仍旧织左交叉。<b>反面行照图同方向织，不要反过来</b>',39],
+   [b+twm(0,0,c)+ub(0,0,c,1),'<b>扭加针</b>　手上一律是<b>挑渡线、入后针脚织 1 下针</b>。带短横线＝正面看是扭上针，不带＝扭下针，动作相同',20],
+   [b+dec(0,0,'R',c),'<b>右上2目并针</b>（粗线右下→左上）。在<b>反面行</b>织 <b>k2tog</b>，在正面行织 <b>ssk</b>',20],
+   [b+dec(0,0,'L',c),'<b>左上2目并针</b>（粗线左下→右上）。在<b>反面行</b>织 <b>ssk</b>，在正面行织 <b>k2tog</b>',20],
+   [b+cdd(0,0,c),'<b>中上3并针</b>　只出现在倒三角收尾的最后一行，3 针并成 1 针、中间那针压在上面',20],
+   [b+slip(0,0,c),'线在前滑 1 针（每行最后一针）',20],
+   ['<line x1="9.5" y1="7" x2="9.5" y2="19.5" stroke="#2C7A6B" stroke-width="1.6" stroke-dasharray="3 2.4"/><circle cx="9.5" cy="4" r="3.4" fill="#fff" stroke="#2C7A6B" stroke-width="1.6"/>','<b>记号扣</b>（绿色虚线）：红框重复到这里为止，不用去数针数。三角形下两个记号扣放好就不再移动；单边加针下每织 2 个模块往外挪一个红框',20],
+   ['<rect x=".5" y=".5" width="18" height="18" fill="#EBE9E2" stroke="#D3D0C7"/>','<b>无针</b>　该行还没长到，跳过',20],
+   ['<rect x=".5" y=".5" width="18" height="18" fill="#EFD9C2" stroke="#D3D0C7"/><rect x="19.5" y=".5" width="18" height="18" fill="#D2E1CE" stroke="#D3D0C7"/><rect x="38.5" y=".5" width="18" height="18" fill="#CBD8EB" stroke="#D3D0C7"/>','折线追踪底色：<b>赭＝会分裂走位的那组</b>；<b>青绿＝不分裂的那组</b>；<b>蓝＝分组基准的那条折线</b>（长方形与三角形下就是正中那条，也属不分裂的一组）。仅供追踪，不影响织法',58],
+  ];
+  return L.map(([g,t,w])=>`<div class="lg"><svg width="${w}" height="20">${g}</svg><span>${t}</span></div>`).join('');
+}
+
+/* ---------- 水印：图解 SVG 里直接铺一层，屏幕上和打印都看得到 ---------- */
+function wmSvg(W,H){
+  let g=`<g opacity="0.055" fill="#26324B" font-size="15" font-weight="700" `
+       +`font-family="-apple-system,'PingFang SC','Noto Sans SC','Hiragino Sans GB','Microsoft YaHei',sans-serif" pointer-events="none" `
+       +`transform="rotate(-20 ${Math.round(W/2)} ${Math.round(H/2)})">`;
+  for(let y=-Math.round(H*0.6);y<H*1.5;y+=112)
+    for(let x=-Math.round(W*0.5);x<W*1.5;x+=300)
+      g+=`<text x="${x}" y="${y}">翡晔楼 · Origami Stitch Studio</text>`;
+  return g+'</g>';
+}
+
+/* ---------- fold path tint ---------- */
+function tintMap(pat,row){
+  const m={}, zi=row.zi;
+  const cen=pat.foldPos(Math.round(pat.centerK));
+  /* 先按「这一列在本行有没有针」铺底色，而不是按 active。
+     折线刚在边缘长出来／快被减掉时并不算 active（它和滑针抢同一针位，
+     所以不织上针），但那一列的针是存在的 —— 底色必须照样贯穿，否则
+     三角形／单边加针下每条折线都会断掉十来行。 */
+  /* 从 k=0 起：单边模式下 k=0 就是固定边那一列，它也是一条折线，
+     以前只有之字段才上色，平褶段那几十行是断的。 */
+  for(let k=0;k<=pat.finalN+1;k++){
+    const p=pat.foldPos(k);
+    if(p<row.lo||p>row.hi) continue;
+    m[p]= pat.isA(k) ? 'A' : (p===cen?'B':'C');
+  }
+  /* 之字段：A 组分裂走位的轨迹另外盖上去。含布边外那两条虚拟折线（第 1／第 Wc 针）， */
+  /* 它们朝内的半条分叉落在布内，底色也要跟上。 */
+  const Az=[]; for(let k=0;k<=pat.finalN+1;k++){ if(pat.isA(k)) Az.push(pat.foldPos(k)); }
+  const mk=x=>{ if(x>=row.lo&&x<=row.hi) m[x]='A'; };
+  if(zi===1){
+    Az.forEach(f=>{mk(f-1);mk(f);mk(f+1);});
+  } else if(zi>1 && zi%2===0){
+    const j=zi/2; Az.forEach(f=>{mk(f);for(let q=f-j-1;q<=f-j;q++)mk(q);for(let q=f+j;q<=f+j+1;q++)mk(q);});
+  } else if(zi>1){
+    const mm=(zi+1)/2; Az.forEach(f=>{mk(f-mm);mk(f);mk(f+mm);});
+  }
+  return m;
+}
+
+/* ---------- chart ---------- */
+function drawChart(pat,mode){
+  const Wc=pat.Wc, S=pat.S, MOD=pat.MOD;
+  const shaped = pat.shape!=='rect';          // 三角形／单边加针：横向结构逐模块变化
+  const growing = pat.shape!=='tridn';        // 长针 or 收针
+  const oneMod=(mode==='one');
+  let rows, digestNote='', omitted=0, headMods=0;
+  if(oneMod){
+    const tipS=pat.rows.filter(r=>r.sect==='tip'&&r.m===0);
+    const tipE=pat.rows.filter(r=>r.sect==='tip'&&r.m>MOD);
+    const modOf=m=>pat.rows.filter(r=>r.sect==='mod'&&r.m===m);
+    const base=pat.rows.filter(r=>r.sect==='base');
+    /* 16：三角形／单边摘要画 3 个模块 —— 模块行数是奇数，模块 3 与模块 1 同向，
+       画到第 3 个读者才看得出「隔一个模块回到原样」的规律。长方形仍画 2 个。 */
+    const K=Math.min(shaped?3:2,MOD); headMods=K;
+    let seg=[], fromTop=false;
+    if(tipE.length){
+      fromTop=true;
+      for(let m=Math.max(1,MOD-K+1);m<=MOD;m++) seg=seg.concat(modOf(m));
+      seg=seg.concat(tipE);
+    } else {
+      seg=base.concat(tipS);
+      for(let m=1;m<=K;m++) seg=seg.concat(modOf(m));
+    }
+    omitted=pat.rows.length-seg.length;
+    rows = omitted>0 ? (fromTop ? [null,null].concat(seg) : seg.concat([null,null])) : pat.rows.slice();
+    digestNote = !shaped
+      ? `只画了前 ${K} 个模块。第 1、2 个模块符号互为反转，往后就是这两个交替，共 ${MOD} 个。`
+      : fromTop
+        ? `尖角在上，所以从尖角往下取摘要：画了收尾尖角和最后 ${K} 个模块。起针最宽的那一端在图外。`
+        : `尖角在下，所以从尖角往上取摘要：画了尖角起针段和前 ${K} 个模块。`;
+    digestNote += '行号是真实行号。';
+  } else rows=pat.rows;
+
+  const rr=rows.filter(r=>r);
+  let baseLo=1, baseHi=Wc;
+  if(oneMod){ baseLo=Math.min.apply(null,rr.map(r=>r.lo)); baseHi=Math.max.apply(null,rr.map(r=>r.hi)); }
+  const width=baseHi-baseLo+1;
+
+  /* ---- 横向结构分析 ----
+     长方形：整幅就是同一个单元在重复，红框圈一个单元即可。
+     三角形／单边加针：两端是「每个模块都在变」的加针区，中间才是纯重复区。
+     中间固定区 = 画出来的这几个模块里最窄那一行已经拥有的范围（对齐到折线列），
+     红框只圈这一段；两端另外标成加针区。 */
+  const modDrawn=rr.filter(r=>r.sect==='mod');
+  let coreLo=baseLo, coreHi=baseHi, zoneR=null, zoneL=null, zoned=false;
+  if(oneMod && shaped && modDrawn.length){
+    let nar=modDrawn[0]; modDrawn.forEach(r=>{ if(r.n<nar.n) nar=r; });
+    const cl=S*Math.ceil((nar.lo-1)/S)+1, ch=S*Math.floor((nar.hi-1)/S)+1;
+    if(ch-cl>=2*S && (cl>baseLo||ch<baseHi)){
+      coreLo=cl; coreHi=ch; zoned=true;
+      if(coreLo>baseLo) zoneR=[baseLo,coreLo-1];
+      if(coreHi<baseHi) zoneL=[coreHi+1,baseHi];
+    }
+  }
+
+  /* ---- 选列（中间省略只发生在固定重复区内部，两端塑形区一定画全） ---- */
+  let drawCols=[], clip=false;
+  const headEnd=coreLo+3*S-1, tailStart=coreHi-3*S+1;
+  const reps=Math.round((coreHi-coreLo+1-2*S-1)/(2*S));
+  if(oneMod && tailStart-headEnd>S){
+    for(let c=baseLo;c<=headEnd;c++) drawCols.push(c);
+    drawCols.push(null);
+    for(let c=tailStart;c<=baseHi;c++) drawCols.push(c);
+    clip=true;
+  } else { for(let c=baseLo;c<=baseHi;c++) drawCols.push(c); }
+  const slot={}; drawCols.forEach((c,i)=>{if(c!==null)slot[c]=i;});
+  const lbl=c=>oneMod?(c-baseLo+1):c;
+  const nS=drawCols.length, NR=rows.length;
+  /* 宽度预算：至少 900，屏幕更宽就用掉（左右各留 56/36 给行号和边注）。
+     预算只决定「画多大」，不决定「屏幕放不放得下」—— 放不下由「适应屏幕」缩。 */
+  let cell=Math.max(9,Math.min(26,Math.floor((pat.budget||900)/nS)));
+  if(NR*cell>2600) cell=Math.max(8,Math.floor(2600/NR));
+  const X=c=>(nS-1-slot[c])*cell, Y=i=>(NR-1-i)*cell;
+  const GW=nS*cell, BOT=NR*cell;
+  const xSpan=(a,b)=>{ // 给定画布列区间 -> [左端x, 宽度]；跳过被省略的列
+    const ks=[]; for(let c=a;c<=b;c++) if(slot[c]!==undefined) ks.push(slot[c]);
+    if(!ks.length) return null;
+    const mn=Math.min.apply(null,ks), mx=Math.max.apply(null,ks);
+    return [(nS-1-mx)*cell,(mx-mn+1)*cell];
+  };
+  let s='';                       // 内容先攒着，高度等脚注行数定了再拼头
+  const foot=[];                  // 图下方居中的整行说明，自动折行，避免左右标签打架
+  const wrapMid=(txt)=>{ const per=Math.max(14,Math.floor((GW+70)/11.2)); const out=[];
+    let line='';
+    txt.split(/(?<=[·；，：。])/).forEach(seg=>{
+      if((line+seg).length>per && line){ out.push(line); line=seg; } else line+=seg; });
+    if(line) out.push(line); return out; };
+
+  /* ---- 两端塑形区底纹（只铺在模块行上） ---- */
+  let modYa=null,modYb=null;
+  rows.forEach((r,i)=>{ if(r&&r.sect==='mod'){ if(modYa===null)modYa=i; modYb=i; } });
+
+  rows.forEach((row,i)=>{
+    if(!row){ if(rows[i+1]===null) return; const y0=Y(i), yb=y0+cell/2;
+      s+=`<rect x="-30" y="${y0-1}" width="${GW+60}" height="${cell+2}" fill="#FBFAF6"/>`;
+      s+=`<line x1="-24" y1="${yb}" x2="${GW+24}" y2="${yb}" stroke="#C8302E" stroke-width="1.3" stroke-dasharray="7 5"/>`;
+      const txt = shaped
+        ? `省略 ${omitted} 行 · 同样的模块，逐个${growing?'变宽':'变窄'}`
+        : `省略 ${omitted} 行 · 同样的两个模块继续交替`;
+      const tw=Math.min(GW-8,300);
+      s+=`<rect x="${GW/2-tw/2}" y="${yb-8}" width="${tw}" height="16" rx="8" fill="#FAF1EB" stroke="#C8302E" stroke-width=".8"/>`;
+      s+=`<text x="${GW/2}" y="${yb+4}" font-size="10" fill="#C8302E" text-anchor="middle">${txt}</text>`;
+      return; }
+    const y=Y(i), odd=row.absOdd, tm=tintMap(pat,row);
+    if(row.zi>0) s+=`<rect x="0" y="${y}" width="${GW}" height="${cell}" fill="#F3F1EA"/>`;
+    drawCols.forEach(c=>{ if(c===null)return;
+      if(c<row.lo||c>row.hi) s+=`<rect x="${X(c)}" y="${y}" width="${cell}" height="${cell}" fill="#EBE9E2" stroke="#D3D0C7" stroke-width=".6"/>`;});
+    row.cells.forEach(cl=>{
+      const span=cl.span||1, ca=cl.c, cb=cl.c+span-1;
+      if(slot[ca]===undefined||slot[cb]===undefined) return;
+      if(span===2 && Math.abs(slot[cb]-slot[ca])!==1) return;
+      const x=X(cb), w=span*cell;
+      let key=null; for(let q=ca;q<=cb;q++) if(tm[q]) key=tm[q];
+      const bg=key==='A'?'#EFD9C2':key==='B'?'#CBD8EB':key==='C'?'#D2E1CE':'#fff';
+      s+=`<rect x="${x}" y="${y}" width="${w}" height="${cell}" fill="${bg}" stroke="#D3D0C7" stroke-width=".6"/>`;
+      if(cl.t==='sl') s+=slip(x,y,cell);
+      else if(cl.t==='RC'||cl.t==='LC'){ s+=cross(x,y,(cl.t==='RC')===odd?'R':'L',cell); if(!odd)s+=ub(x,y,cell,2); }
+      else if(cl.t==='inc'){ s+=twm(x,y,cell); if(!odd)s+=ub(x,y,cell,1); }
+      else if(cl.t==='dec3'){ s+=cdd(x,y,cell); if(!odd)s+=ub(x,y,cell,1); }
+      else if(cl.t==='decL'||cl.t==='decR'){ s+=dec(x,y,cl.t==='decR'?'R':'L',cell); if(!odd)s+=ub(x,y,cell,1); }
+      else if((cl.t==='k')!==odd) s+=bar(x,y,cell);
+    });
+    /* 行号一律用真实行号，摘要模式也不重新编号 */
+    const rn=row.no, fsz=Math.max(6.4,Math.min(9,cell*0.62));
+    if(row.sect==='base'){
+      /* 基础段：不占行号（比照 Noro / Raingelt），左端标名、右端注起针数 */
+      if(cell>=7){
+        const yy=y+cell/2+fsz*0.36;
+        const xl=(slot[row.hi]!==undefined?X(row.hi)-3:-4);
+        const xr=(slot[row.lo]!==undefined?X(row.lo)+cell+3:GW+4);
+        s+=`<text x="${xl}" y="${yy}" font-size="${fsz}" fill="#B05A3C" text-anchor="end">基础段</text>`;
+        s+=`<text x="${xr}" y="${yy}" font-size="${fsz}" fill="#B05A3C">起针 ${row.n} 针</text>`;
+      }
+      return;
+    }
+    if(cell>=7){
+      const yy=y+cell/2+fsz*0.36;
+      if(odd){ const xr=(slot[row.lo]!==undefined?X(row.lo)+cell+3:GW+4);
+        s+=`<text x="${xr}" y="${yy}" font-size="${fsz}" fill="#9AA0AC">${rn}</text>`; }
+      else { const xl=(slot[row.hi]!==undefined?X(row.hi)-3:-4);
+        s+=`<text x="${xl}" y="${yy}" font-size="${fsz}" fill="#9AA0AC" text-anchor="end">${rn}</text>`; }
+    }
+  });
+  rows.forEach((row,i)=>{ if(row&&row.mr===1&&row.sect==='mod'&&i>0)
+    s+=`<line x1="-27" y1="${Y(i)+cell}" x2="${GW+27}" y2="${Y(i)+cell}" stroke="#B05A3C" stroke-width="1.5"/>`; });
+  /* 16：画到第 3 个模块时，标出「隔一个模块就回到第 1 模块的样子」 */
+  if(oneMod&&headMods>=3&&cell>=7){
+    const i3=rows.findIndex(r=>r&&r.sect==='mod'&&r.m===3&&r.mr===1);
+    if(i3>=0){ const fz=Math.min(9.5,cell*0.7), yb=Y(i3)+cell,
+      tx=(pat.shape==='side'
+            ? `回到第 1 模块的织法，加针端多 ${2*S} 针`
+            : `回到第 1 模块的织法，两端各${growing?'多':'少'} ${2*S} 针`),
+      wpx=tx.length*fz*0.92+16;
+      s+=`<rect x="${GW/2-wpx/2}" y="${yb-fz*0.95}" width="${wpx}" height="${fz*1.9}" rx="${fz}" `+
+         `fill="#FFFFFF" stroke="#B05A3C" stroke-width="1.2"/>`+
+         `<text x="${GW/2}" y="${yb+fz*0.38}" font-size="${fz}" fill="#B05A3C" text-anchor="middle">${tx}</text>`; }
+  }
+  if(clip){
+    const gi=drawCols.indexOf(null), gx=(nS-1-gi)*cell+cell/2;
+    s+=`<line x1="${gx}" y1="-2" x2="${gx}" y2="${BOT+2}" stroke="#AEB3BC" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    s+=`<text x="${gx}" y="${BOT+13}" font-size="9" fill="#7d8494" text-anchor="middle">省略</text>`;
+  }
+
+  /* ---- 横向结构：红框＝一个 2S 针的重复单元；绿色记号扣＝自然分界 ----
+     对称形状：中心 2S−1 针固定不动，两侧各从加针区重复到记号扣。
+     单边加针：固定边 S 针 → 重复到记号扣 → 加针区。
+     这样读者不用去数「中间固定重复区」有多宽，停在哪里由记号扣决定。 */
+  const foldsAt=m=>{const a=pat.rows.filter(r=>r.sect==='mod'&&r.m===m);return a.length?a[a.length-1].active.length:0;};
+  if(oneMod && zoned && modYa!==null){
+    const ya=Y(modYb), yb=Y(modYa)+cell;
+    const grow=growing, dN=(pat.shape==='side'?1:2);
+    /* 红框只圈一个重复单元。它是「模板」，画在画出来的幅宽之内即可，
+       不要求这几个模块都已经长到那里（最窄的那个模块重复 0 次是正常的）。 */
+    /* 红框只圈一个重复单元，且只画在「这些列确实有针」的那几行上，
+       不去压最窄那个模块的无针格。 */
+    const rowsIn=(a,b)=>{ let A=null,B=null;
+      rows.forEach((r,i)=>{ if(r&&r.sect==='mod'&&r.lo<=a&&r.hi>=b){ if(A===null)A=i; B=i; } });
+      return A===null?null:[Y(B),Y(A)+cell]; };
+    const boxOf=(a,b,lab)=>{ if(a<baseLo||b>baseHi) return false;
+      let cnt=0; for(let q=a;q<=b;q++) if(slot[q]!==undefined) cnt++;
+      if(cnt!==b-a+1) return false;               // 中间被省略掉了，画出来会骗人
+      const q=xSpan(a,b), v=rowsIn(a,b); if(!q||!v||v[1]-v[0]<3*cell) return false;
+      s+=`<rect x="${q[0]}" y="${v[0]}" width="${q[1]}" height="${v[1]-v[0]}" fill="none" stroke="#C8302E" stroke-width="1.8"/>`;
+      if(lab) s+=`<text x="${q[0]+q[1]/2}" y="${BOT+42}" font-size="11" fill="#C8302E" text-anchor="middle">红框 ${2*S} 针</text>`;
+      return true; };
+    const markSeg=(xx,y0,y1)=>{ if(xx===null) return;
+      s+=`<line x1="${xx}" y1="${y0-6}" x2="${xx}" y2="${y1+3}" stroke="#2C7A6B" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+      s+=`<circle cx="${xx}" cy="${y0-10}" r="3.6" fill="#fff" stroke="#2C7A6B" stroke-width="1.6"/>`; };
+    const mark=xx=>markSeg(xx,ya,yb);
+    const lft=c=>{const q=xSpan(c,c);return q?q[0]:null;};          // 列 c 的左边界
+    const rgt=c=>{const q=xSpan(c,c);return q?q[0]+q[1]:null;};     // 列 c 的右边界
+    let boxed=false;
+    if(pat.shape==='side'){
+      const fixA = pat.sideR ? baseHi-S+1 : baseLo;
+      const fixB = pat.sideR ? baseHi       : baseLo+S-1;
+      const q=xSpan(fixA,fixB);
+      if(q) s+=`<text x="${q[0]+q[1]/2}" y="${BOT+29}" font-size="11" fill="#7d8494" text-anchor="middle">固定边 ${S} 针</text>`;
+      boxed = pat.sideR ? boxOf(fixA-2*S,fixA-1,true) : boxOf(fixB+1,fixB+2*S,true);
+      /* 单边加针的记号扣会往外挪：每个模块各画一段，画成台阶就看得出来挪去哪 */
+      [...new Set(rr.filter(r=>r.sect==='mod').map(r=>r.m))].forEach(m=>{
+        const a=rr.filter(r=>r.sect==='mod'&&r.m===m); if(!a.length) return;
+        const edge = pat.sideR ? Math.min.apply(null,a.map(r=>r.lo))
+                               : Math.max.apply(null,a.map(r=>r.hi));
+        const span = pat.sideR ? (fixA-edge) : (edge-fixB);
+        const mk = pat.sideR ? fixA-2*S*Math.floor(span/(2*S))
+                             : fixB+2*S*Math.floor(span/(2*S));
+        if(2*S*Math.floor(span/(2*S))<=0) return;
+        let A=null,B=null;
+        rows.forEach((r,i)=>{ if(r&&r.sect==='mod'&&r.m===m){ if(A===null)A=i; B=i; } });
+        if(A!==null) markSeg(pat.sideR?rgt(mk):lft(mk),Y(B),Y(A)+cell);
+      });
+      foot.push(['#7d8494',`一行的走法：固定边 ${S} 针 →「红框 ${2*S} 针」重复到记号扣 → 加针区。记号扣每织 2 个模块往外挪一个红框。`]);
+    } else {
+      const cen=pat.foldPos(pat.centerK), cL=cen-(S-1), cH=cen+(S-1);
+      const q=xSpan(cL,cH);
+      if(q) s+=`<text x="${q[0]+q[1]/2}" y="${BOT+29}" font-size="11" fill="#2C7A6B" text-anchor="middle">中心 ${2*S-1} 针</text>`;
+      const bR=boxOf(cL-2*S,cL-1,true); boxed=boxOf(cH+1,cH+2*S,!bR)||bR;
+      mark(rgt(cL)); mark(lft(cH));
+      foot.push(['#7d8494',`一行的走法：${grow?'加':'减'}针区 →「红框 ${2*S} 针」重复到记号扣 → 中心 ${2*S-1} 针 → 「红框」重复到另一侧记号扣 → ${grow?'加':'减'}针区。两个记号扣放好之后不再移动。`]);
+    }
+    [zoneR,zoneL].forEach(z=>{ if(!z)return; const q=xSpan(z[0],z[1]); if(!q)return;
+      s+=`<text x="${q[0]+q[1]/2}" y="${BOT+29}" font-size="11" fill="#C8302E" text-anchor="middle">${grow?'加':'减'}针区</text>`; });
+    if(!boxed) foot.push(['#7d8494',`这组参数下重复单元还没长出一整格，红框暂不画；${2*S} 针为一个横向重复。`]);
+    foot.push(['#7d8494',`每织 2 个模块，红框${pat.shape==='side'?'':'两侧各'}多重复 1 次：第 1 模块织完 ${foldsAt(1)} 条折线，第 ${MOD} 模块织完 ${foldsAt(MOD)} 条，每个模块${grow?'并入':'退出'} ${dN} 条。`]);
+    foot.push(['#7d8494',`记号扣以外是${grow?'加':'减'}针区：${pat.shape==='side'?'':'每一端'}每个模块${grow?'＋':'−'}${S} 针，这一段逐模块都在变，不要照着它数总针数。`]);
+  } else if(clip){
+    const a2=coreLo+S, b2=coreLo+3*S-1, sp=xSpan(a2,b2);
+    if(sp){
+      s+=`<rect x="${sp[0]}" y="0" width="${sp[1]}" height="${BOT}" fill="none" stroke="#C8302E" stroke-width="1.8"/>`;
+      s+=`<text x="${sp[0]+sp[1]/2}" y="${BOT+29}" font-size="11" fill="#C8302E" text-anchor="middle">红框 ${2*S} 针重复 ${reps} 次</text>`;
+      foot.push(['#7d8494',`整幅 ${width} 针 ＝ ${S} ＋ ${2*S}×${reps} ＋ ${S+1}。`]);
+    }
+  }
+
+  /* ---- 纵向：模块重复（赭色虚线） ---- */
+  if(oneMod && modYa!==null){
+    const mods=[...new Set(rr.filter(r=>r.sect==='mod').map(r=>r.m))];
+    const ya=Y(modYb), yb=Y(modYa)+cell;
+    s+=`<rect x="-26" y="${ya-3}" width="${GW+52}" height="${yb-ya+6}" fill="none" stroke="#B05A3C" stroke-width="1.4" stroke-dasharray="7 5" rx="3"/>`;
+    foot.push(['#B05A3C', shaped
+      ? `赭色虚线框：框内 ${mods.length} 个模块；全篇共 ${MOD} 个，行结构相同，逐个${growing?'变宽':'变窄'}。`
+      : `赭色虚线框：框内这 ${mods.length} 个模块交替重复，共 ${MOD} 个。`]);
+  }
+
+  drawCols.forEach(c=>{ if(c===null)return; const L=lbl(c);
+    if((L===1||L%5===0)&&cell>=8){
+      s+=`<text x="${X(c)+cell/2}" y="${BOT+13}" font-size="8.5" fill="#7d8494" text-anchor="middle">${L}</text>`;
+      s+=`<text x="${X(c)+cell/2}" y="-5" font-size="8.5" fill="#7d8494" text-anchor="middle">${L}</text>`;}});
+  let fy=BOT+(foot.length?58:20);
+  foot.forEach(([col,txt])=>{ wrapMid(txt).forEach(l=>{
+    s+=`<text x="${GW/2}" y="${fy}" font-size="10" fill="${col}" text-anchor="middle">${l}</text>`; fy+=13; }); });
+  const H=Math.round(fy+10);
+  s=`<svg xmlns="http://www.w3.org/2000/svg" width="${GW+92}" height="${H}" viewBox="0 0 ${GW+92} ${H}" style="background:#fff"><g transform="translate(56,14)">`
+     +s+`</g>`+wmSvg(GW+92,H)+`</svg>`;
+  return {svg:s,clip,reps,zoned,coreLo,coreHi,zoneR,zoneL,headMods,omitted,
+          rows:rows.filter(r=>r),digestNote};
+}
+
+/* ---------- text ---------- */
+/* 每个 token 自带「从左棒针上吃掉几针」，专供「重复至最后 N 针」计数。
+   扭加针是挑渡线加出来的，一针都不吃 —— 以前一律按 1 算，尾数会差。 */
+const NM={p:['上1',1],sl:['线在前滑1针',1],inc:['挑渡线织扭下针',0],dec3:['中上3并针',3]};
+const DEC=(t,odd)=> t==='decR' ? (odd?'ssk':'k2tog') : (odd?'k2tog':'ssk');
+/* 交叉的名称＝图上画出来的方向。1/1 交叉翻到背面，左右镜像与上下层对调
+   两次抵消，倾斜方向不变，所以反面行照图同方向织，两针都织下针。 */
+function crossName(t,odd){ return ((t==='RC')===odd) ? '右交叉' : '左交叉'; }
+function rowTokens(row){
+  const order = row.absOdd ? row.cells.slice() : row.cells.slice().reverse();
+  const t=[]; let rk=0, rp=0;
+  const T=(s,need)=>t.push({s,need});
+  const flush=()=>{ if(rk){T('下'+rk,rk);rk=0;} if(rp){T('上'+rp,rp);rp=0;} };
+  order.forEach(cl=>{
+    if(cl.t==='k'){ if(rp){T('上'+rp,rp);rp=0;} rk++; return; }
+    if(cl.t==='p'){ if(rk){T('下'+rk,rk);rk=0;} rp++; return; }
+    flush();
+    if(cl.t==='RC'||cl.t==='LC'){ T(crossName(cl.t,row.absOdd),2); return; }
+    if(cl.t==='decL'||cl.t==='decR'){ T(DEC(cl.t,row.absOdd),2); return; }
+    const d=NM[cl.t]; T(d[0],d[1]);
+  });
+  flush();
+  return t;
+}
+function tkStitches(x){ return x.need; }
+function compress(t,toEnd){
+  const J=a=>a.map(x=>x.s).join('、');
+  let best=null;
+  for(let L=2;L<=Math.floor(t.length/3);L++){
+    for(let s=0;s+2*L<=t.length;s++){
+      let cnt=1;
+      while(s+(cnt+1)*L<=t.length){
+        let ok=true;
+        for(let q=0;q<L;q++) if(t[s+cnt*L+q].s!==t[s+q].s){ok=false;break;}
+        if(!ok)break; cnt++;
+      }
+      if(cnt>=3){ const sc=L*cnt; if(!best||sc>best.sc) best={s,L,cnt,sc}; }
+    }
+  }
+  if(!best) return J(t);
+  const {s,L,cnt}=best;
+  const head=t.slice(0,s), unit=t.slice(s,s+L), tail=t.slice(s+cnt*L);
+  let mid='「'+J(unit)+'」重复 '+cnt+' 次';
+  if(toEnd && tail.length){
+    const left=tail.reduce((a,x)=>a+tkStitches(x),0);
+    mid='「'+J(unit)+'」重复引号内动作至最后 '+left+' 针';
+  }
+  return [J(head),mid,J(tail)].filter(x=>x).join('、');
+}
+function rowLine(r,toEnd){return `第 ${r.no} 行：${compress(rowTokens(r),toEnd)}。（${r.n}针）`;}
+function modOf(pat,m){return pat.rows.filter(r=>r.sect==='mod'&&r.m===m);}
+
+/* 文字解条目：h=0 逐行 / 1 小标题 / 2 段落大标题 / 3 说明段
+   摘要模式写成「逐行 + 重复指令 + 逐行」三段式，让规律看得见，
+   而不是从中间截一段下来。 */
+function textItems(pat,mode){
+  const out=[], MOD=pat.MOD, shaped=pat.shape!=='rect';
+  const growing=pat.shape!=='tridn';
+  const pmf=shaped?(pat.shape==='side'?1:2):0;
+  const S=pat.S, MR=pat.modRows;
+  /* 塑形行均匀铺满模块后，模块行数不够时会有几处加针落在连续两行上。
+     这一点必须写进文字解，否则织的人照「每 2 行加一次」的习惯走就会错行。 */
+  const isShape=r=>r.cells.some(x=>x.t==='inc'||x.t==='decL'||x.t==='decR'||x.t==='dec3');
+  let backToBack=0;
+  for(let i=1;i<pat.rows.length;i++)
+    if(isShape(pat.rows[i])&&isShape(pat.rows[i-1])) backToBack++;
+  const tipS=pat.rows.filter(r=>r.sect==='tip'&&r.m===0);
+  const tipE=pat.rows.filter(r=>r.sect==='tip'&&r.m>MOD);
+  const push=(h,s)=>out.push({h,s});
+  const firstNo=l=>{const r=l.find(x=>x.no>0);return r?r.no:1;};
+  const rowsOut=list=>{ let lastM=-99;
+    list.forEach(r=>{
+      if(r.no===1 && pat.shape==='side')
+        push(3,`加针规律：加针只在每个模块开头的平褶段 ${pat.pleat} 行里，每 2 行在加针侧加 1 针，共 ${pat.pleat/2} 针；之后的之字段 ${2*S-3} 行一针不加。所以布边是「斜一段、再直一段」的阶梯。折线不是每个模块长一条 —— 加针侧每越过 ${S} 针才多一条，本组参数下大约每 ${(S/(pat.pleat/2)).toFixed(1)} 个模块多一条。整个模块 ${MR} 行只长 ${pat.pleat/2} 针，铺平是一个很狭长的楔形。`);
+      if(r.no===1 && backToBack)
+        push(3,`注意：${growing?'加':'减'}针行不是整齐的「每 2 行一次」。一个模块里要${growing?'加':'减'} ${S} 次，行数排不下时会有几处落在连续两行上（全篇共 ${backToBack} 处）。请照行号走，不要按节奏推。`);
+      if(r.sect==='base'){ push(0, r.no>0
+        ? `第 ${r.no} 行（基础段）：起针 ${r.n} 针，整行下针，这一行不放折线。`
+        : `基础段：起针 ${r.n} 针，整行下针。这一行不计入行号，下一行才是第 1 行。`); return; }
+      if(r.m!==lastM){ lastM=r.m;
+        push(1, r.sect==='tip'
+          ? (r.m===0?'尖角起针段':'收尾尖角段')+`（第 ${r.no} 行起）`
+          : `第 ${r.m} 模块（第 ${r.no}–${r.no+MR-1} 行）`); }
+      push(0,rowLine(r,shaped)); }); };
+  /* 19：长方形每个模块逐字相同，摘要只写 1 个模块，末尾一句重复说明；
+     三角形／单边仍要三段式，因为针数逐模块在变。 */
+  if(mode==='one' && !shaped && MOD>1){
+    rowsOut(pat.rows.filter(r=>r.sect==='base'||(r.sect==='mod'&&r.m===1)));
+    push(3,`重复以上 ${MR} 行，共织 ${MOD} 个模块（含上面已写的第 1 个）。按解说一直织下去即可，织物的正面始终是同一面。`);
+    push(3,`因模块行数是奇数，新一个模块的折线凸凹和上一个模块相反，这正是折纸立体效果的来源。`);
+    return out;
+  }
+  const K=Math.min(shaped?1:2,MOD);
+  if(mode!=='one' || MOD<=K+1){ rowsOut(pat.rows); return out; }
+
+  let head=pat.rows.filter(r=>r.sect==='base').concat(tipS);
+  for(let m=1;m<=K;m++) head=head.concat(modOf(pat,m));
+  const tail=modOf(pat,MOD).concat(tipE);
+  const midA=modOf(pat,K+1)[0], midZ=modOf(pat,MOD-1).slice(-1)[0];
+
+  push(2,`一 · 逐行织（第 ${firstNo(head)}–${head.slice(-1)[0].no} 行）`);
+  rowsOut(head);
+
+  const midN=MOD-1-K;
+  const midTag = midN===1 ? `第 ${MOD-1} 模块` : `第 ${K+1}–${MOD-1} 模块`;
+  push(2,`二 · 重复段（第 ${midA.no}–${midZ.no} 行，${midTag}）`);
+  if(!shaped){
+    push(3, (midN===1?`这个模块没有新内容：`:`这 ${midN} 个模块没有新内容：`)+`奇数号模块照第 1 模块织，偶数号模块照第 2 模块织，一直织到第 ${MOD-1} 模块。针数始终 ${head.slice(-1)[0].n} 针。`);
+    push(3,`每个模块 ${MR} 行是奇数，织完一个模块织物的正反面就自动对调，所以第 2 模块看起来处处与第 1 模块相反 —— 这是织物自己完成的，手上不需要任何额外动作，照模块 1 的动作重复即可。`);
+  } else {
+    push(3,`第 ${K+1} 模块起，每个模块都是 ${MR} 行，逐行结构与第 ${K} 模块一一对应，只有两处不同：① 平褶段头 ${2*S} 行里有 ${S} 个塑形行，${pmf===2?'每行两端各':'每行在一端'}${growing?'加':'减'} 1 针；② 折线条数每个模块${growing?'多':'少'} ${pmf} 条，所以每行${pmf===2?'两端各':'在一端'}${growing?'多':'少'}织 ${S} 针，中间的重复组数随之${growing?'递增':'递减'}。`);
+    push(3,`换句话说：两端的${growing?'加':'减'}针区每个模块都在变，中间那段是纯重复，只是重复的组数跟着模块号走。逐个模块的针数如下 ——`);
+    const lim=Math.min(MOD-1,K+18);
+    for(let m=K+1;m<=lim;m++){
+      const a=modOf(pat,m); if(!a.length)continue;
+      push(0,`第 ${m} 模块：第 ${a[0].no}–${a.slice(-1)[0].no} 行，织完 ${a.slice(-1)[0].n} 针，折线 ${a.slice(-1)[0].active.length} 条`);
+    }
+    if(lim<MOD-1) push(0,`……照此规律直到第 ${MOD-1} 模块`);
+  }
+
+  push(2,`三 · 逐行织（第 ${tail[0].no}–${tail.slice(-1)[0].no} 行）`);
+  rowsOut(tail);
+  return out;
+}
+function drawText(pat,mode){
+  return textItems(pat,mode).map(it=>
+    it.h===2?`<p class="h2">${it.s}</p>`
+    :it.h===1?`<p class="h">${it.s}</p>`
+    :it.h===3?`<p class="ex">${it.s}</p>`
+    :`<p><span class="rn">${it.s.split('：')[0]}</span>：${it.s.split('：').slice(1).join('：')}</p>`
+  ).join('');
+}
+
+/* ---------- schematic (fixed teaching diagram) ---------- */
+const SCHEM=(function(){
+  const W=640,H=262, xs=[90,190,290,390,490], yB=178, yM=112, yT=34, O='#B05A3C', B='#7F8C8A';
+  let g=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-76 -6 ${W+96} ${H}" width="100%" style="max-width:740px;background:#fff;border:1px solid var(--line2);border-radius:8px">`;
+  g+=`<rect x="60" y="${yM}" width="470" height="${yB-yM}" fill="#fbfaf7"/>`;
+  g+=`<rect x="60" y="${yT}" width="470" height="${yM-yT}" fill="#F3F1EA"/>`;
+  xs.forEach((x,i)=>{
+    const col=i%2?B:O;
+    g+=`<line x1="${x}" y1="${yB}" x2="${x}" y2="${yM}" stroke="${col}" stroke-width="2.2"/>`;
+    g+=`<line x1="${x}" y1="${yM}" x2="${x-50}" y2="${yT}" stroke="${col}" stroke-width="2.2"/>`;
+    g+=`<line x1="${x}" y1="${yM}" x2="${x+50}" y2="${yT}" stroke="${col}" stroke-width="2.2"/>`;
+  });
+  g+=`<text x="${xs[2]}" y="${yB+16}" font-size="11" fill="${O}" text-anchor="middle">折线</text>`;
+  g+=`<text x="${xs[2]}" y="${yB+28}" font-size="9.5" fill="#9AA0AC" text-anchor="middle">折线数 N ＝ 这样的竖线有几条 · 必须奇数</text>`;
+  g+=`<path d="M${xs[2]},${yB+24} L${xs[2]},${yB+30} L${xs[3]},${yB+30} L${xs[3]},${yB+24}" fill="none" stroke="#26324B" stroke-width="1.1"/>`;
+  g+=`<text x="${(xs[2]+xs[3])/2}" y="${yB+44}" font-size="12" fill="#26324B" text-anchor="middle">折面宽 S 针</text>`;
+  const br=(ya,yb,t1,t2)=>{let r=`<path d="M56,${ya} L50,${ya} L50,${yb} L56,${yb}" fill="none" stroke="#9AA0AC" stroke-width="1.1"/>`;
+    r+=`<text x="44" y="${(ya+yb)/2-1}" font-size="11.5" fill="#26324B" text-anchor="end">${t1}</text>`;
+    r+=`<text x="44" y="${(ya+yb)/2+13}" font-size="10" fill="#9AA0AC" text-anchor="end">${t2}</text>`;return r;};
+  g+=br(yB,yM,'平褶段 P 行','必须偶数 · 折纹竖直不动');
+  g+=br(yM,yT,'之字段 2S−3 行','自动算出，不用填');
+  g+=`<path d="M540,${yB} L546,${yB} L546,${yT} L540,${yT}" fill="none" stroke="${O}" stroke-width="1.4"/>`;
+  g+=`<text x="554" y="${(yB+yT)/2-24}" font-size="11.5" fill="${O}">一个模块</text>`;
+  g+=`<text x="554" y="${(yB+yT)/2-10}" font-size="10" fill="#26324B">＝ P ＋ (2S−3) 行</text>`;
+  g+=`<text x="554" y="${(yB+yT)/2+3}" font-size="10" fill="#9AA0AC">模块数 ＝ 织几个</text>`;
+  g+=`<text x="554" y="${(yB+yT)/2+20}" font-size="10" fill="#9AA0AC">行数必为奇数，织完后</text>`;
+  g+=`<text x="554" y="${(yB+yT)/2+33}" font-size="10" fill="#9AA0AC">织物正反面自动对调、</text>`;
+  g+=`<text x="554" y="${(yB+yT)/2+46}" font-size="10" fill="#9AA0AC">折向反转，不用额外操作</text>`;
+  g+=`<text x="60" y="20" font-size="10.5" fill="#9AA0AC">斜线交汇处围出的菱形，就是成品上看到的折纸块面</text>`;
+  return g+`</svg>`;
+})();
+
+/* ---------- simulation ---------- */
+let yaw=-0.30,pitch=0.55,drag=null;
+function drawSim(pat,tFold){
+  const cv=$('sim'),ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const Wpx=cv.clientWidth||520, Hpx=340;
+  cv.width=Wpx*DPR; cv.height=Hpx*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,Wpx,Hpx);
+  const rows=pat.rows, S=pat.S, Wc=pat.Wc;
+  const sw=1, rh=sw/1.8, amp=tFold*S*sw*0.34;
+  const zRaw=rows.map(row=>{
+    const nodes=[{c:row.lo,z:0}], fs=[];
+    row.active.forEach(k=>{const p=pat.foldPos(k); if(p>row.lo&&p<row.hi) fs.push({p,a:pat.isA(k)});});
+    fs.sort((x,y)=>x.p-y.p);
+    fs.forEach(f=>nodes.push({c:f.p,z:(f.a?-1:1)*row.faceSign*amp/2}));
+    nodes.push({c:row.hi,z:0});
+    if(fs.length){
+      const f0=nodes[1], f1=nodes[nodes.length-2];
+      nodes[0].z=-Math.sign(f0.z)*amp/2*Math.min(1,(f0.c-row.lo)/S);
+      nodes[nodes.length-1].z=-Math.sign(f1.z)*amp/2*Math.min(1,(row.hi-f1.c)/S);
+    }
+    const m=new Map();
+    for(let c=row.lo;c<=row.hi;c++){
+      let z=0;
+      for(let i=0;i<nodes.length-1;i++){
+        if(c>=nodes[i].c&&c<=nodes[i+1].c){
+          const d=nodes[i+1].c-nodes[i].c||1;
+          z=nodes[i].z+(nodes[i+1].z-nodes[i].z)*(c-nodes[i].c)/d; break;
+        }
+      }
+      m.set(c,z);
+    }
+    return m;
+  });
+  const KR=1, W8=[1,3,1];
+  const zS=rows.map((row,ri)=>{
+    const m=new Map();
+    for(let c=row.lo;c<=row.hi;c++){
+      let acc=0,wt=0;
+      for(let k=-KR;k<=KR;k++){
+        const rr=ri+k; if(rr<0||rr>=rows.length) continue;
+        const v=zRaw[rr].get(c); if(v===undefined) continue;
+        const w=W8[k+KR]; acc+=v*w; wt+=w;
+      }
+      m.set(c, wt?acc/wt:zRaw[ri].get(c));
+    }
+    return m;
+  });
+  const refC = pat.shape==='side' ? null : Math.round((Wc+1)/2);
+  const pts=[];
+  rows.forEach((row,ri)=>{
+    const zm=zS[ri], arr=[]; let x=0, prev=null;
+    for(let c=row.lo;c<=row.hi;c++){
+      const z=zm.get(c);
+      if(prev!==null){ const dz=z-prev; x+=Math.sqrt(Math.max(sw*sw-dz*dz,0.05)); }
+      prev=z; arr.push({c,x,z});
+    }
+    let anchor;
+    if(refC===null) anchor=pat.sideR?arr[arr.length-1].x:arr[0].x;
+    else { const idx=Math.max(0,Math.min(arr.length-1,refC-row.lo)); anchor=arr[idx].x; }
+    /* 镜像：画布列 1 是每个单数行的第一针，图解里画在最右边。
+       模拟图的 x 原本随列号递增向右走，等于把织物左右翻了一次 ——
+       对称形状看不出来，单边加针才暴露。这里统一成与图解同向。 */
+    arr.forEach(o=>{o.x=anchor-o.x;});
+    pts.push({arr,y:(rows.length-1-ri)*rh,lo:row.lo});
+  });
+  const cy=(rows.length-1)*rh/2;
+  /* 单边以不加针的固定边为轴；右加针同步镜像观察角和光源，
+     同一视角下的轮廓、折纹与阴影均与左加针左右对称。 */
+  const viewYaw=pat.sideR?-yaw:yaw;
+  const cosY=Math.cos(viewYaw),sinY=Math.sin(viewYaw),cosP=Math.cos(pitch),sinP=Math.sin(pitch);
+  function proj(x,y,z){
+    const y2=y-cy;
+    let X=x*cosY+z*sinY, Z=-x*sinY+z*cosY;
+    let Y=y2*cosP - Z*sinP, D=y2*sinP + Z*cosP;
+    return {X,Y,D};
+  }
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  pts.forEach(P=>P.arr.forEach(o=>{const q=proj(o.x,P.y,o.z);
+    if(q.X<minX)minX=q.X; if(q.X>maxX)maxX=q.X; if(q.Y<minY)minY=q.Y; if(q.Y>maxY)maxY=q.Y;}));
+  const sc=Math.min((Wpx-40)/(maxX-minX+1e-6),(Hpx-40)/(maxY-minY+1e-6));
+  const ox=Wpx/2-(minX+maxX)/2*sc, oy=Hpx/2-(minY+maxY)/2*sc;
+  const quads=[];
+  for(let r=0;r<pts.length-1;r++){
+    const A=pts[r],B=pts[r+1];
+    const off=B.lo-A.lo;
+    for(let i=0;i<A.arr.length-1;i++){
+      const j=i-off;
+      if(j<0||j+1>=B.arr.length) continue;
+      const p1=A.arr[i],p2=A.arr[i+1],p3=B.arr[j+1],p4=B.arr[j];
+      const v=[[p1.x,A.y,p1.z],[p2.x,A.y,p2.z],[p3.x,B.y,p3.z],[p4.x,B.y,p4.z]];
+      const q=v.map(p=>proj(p[0],p[1],p[2]));
+      const lit=pat.sideR?[v[1],v[0],v[3],v[2]]:v;
+      const ux=lit[1][0]-lit[0][0],uy=lit[1][1]-lit[0][1],uz=lit[1][2]-lit[0][2];
+      const vx=lit[3][0]-lit[0][0],vy=lit[3][1]-lit[0][1],vz=lit[3][2]-lit[0][2];
+      let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+      const nl=Math.hypot(nx,ny,nz)||1; nx/=nl;ny/=nl;nz/=nl;
+      const lx=pat.sideR?0.45:-0.45,ly=-0.55,lz=0.70;
+      let lam=Math.abs(nx*lx+ny*ly+nz*lz);
+      const shade=0.60+0.40*Math.min(1,lam);
+      const depth=(q[0].D+q[1].D+q[2].D+q[3].D)/4;
+      quads.push({q,shade,depth});
+    }
+  }
+  quads.sort((a,b)=>a.depth-b.depth);
+  quads.forEach(Q=>{
+    const g=Math.round(150+85*Q.shade), g2=Math.round(126+78*Q.shade);
+    ctx.fillStyle=`rgb(${g},${Math.round(g*0.97)},${g2})`;
+    ctx.strokeStyle=ctx.fillStyle; ctx.lineWidth=0.9;
+    ctx.beginPath();
+    ctx.moveTo(Q.q[0].X*sc+ox,Q.q[0].Y*sc+oy);
+    for(let i=1;i<4;i++) ctx.lineTo(Q.q[i].X*sc+ox,Q.q[i].Y*sc+oy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  });
+}
+
+/* ---------- glue ---------- */
+let PAT=null, CHART=null, ZM='fit', lastW=0;
+/* 图解能用的宽度：容器内宽减掉 padding 和 SVG 自带的 92px 边注区 */
+function chartBudget(){
+  const el=$('chart'); const w=el?el.clientWidth:0;
+  return Math.max(900, Math.round(w-20-92));
+}
+function applyZoom(){
+  const el=$('chart'); el.classList.toggle('fit',ZM==='fit'); el.classList.toggle('nat',ZM!=='fit');
+  const sv=el.querySelector('svg'), h=$('zhint');
+  if(!sv){ h.textContent=''; return; }
+  const nat=parseFloat(sv.getAttribute('width'))||0;
+  const shown=sv.getBoundingClientRect().width;
+  const pct=nat?Math.round(shown/nat*100):100;
+  h.textContent = (ZM==='fit'&&nat&&pct<92)
+    ? `整幅已缩到 ${pct}%，看不清符号就切「原寸」，可以左右滑动看`
+    : (ZM!=='fit'&&nat&&shown<nat-2 ? '原寸显示，左右滑动看完整幅' : '');
+}
+function shapeV(){return document.querySelector('#shape .on').dataset.v;}
+function params(){
+  return {S:+$('S').value,N:+$('N').value,P:+$('P').value,M:+$('M').value,
+    tip:$('tip').checked, shape:shapeV()};
+}
+
+/* ---------- 输入校验：错了就描红报错，并保留上一版图解 ---------- */
+const SPEC=[
+  ['S','折面宽 S',4,60,null,''],
+  ['N','折线数 N',1,99,v=>v%2===1,'必须是奇数'],
+  ['P','平褶段行数 P',0,200,v=>v%2===0,'必须是偶数'],
+  ['M','模块数',1,60,null,''],
+];
+function validate(){
+  const errs=[], skipN=($('tip').checked && baseShape(shapeV())!=='rect');
+  SPEC.forEach(([id,name,mn,mx,ok,why])=>{
+    const el=$(id), e=$('err'+id), raw=String(el.value).trim(), v=Number(raw);
+    let msg='';
+    if(!(id==='N'&&skipN)){
+      if(raw===''||!Number.isFinite(v)||!Number.isInteger(v)) msg='请填一个整数';
+      else if(v<mn||v>mx) msg=`只能填 ${mn}–${mx}`;
+      else if(ok&&!ok(v)) msg=why;
+    }
+    el.classList.toggle('bad',!!msg);
+    e.textContent=msg; e.style.display=msg?'':'none';
+    if(msg) errs.push(name+'：'+msg);
+  });
+  [['gSt','密度针数',8,80],['gRw','密度行数',10,150]].forEach(([id,name,mn,mx])=>{
+    const el=$(id), e=$('err'+id), raw=String(el.value).trim(), v=Number(raw);
+    let msg='';
+    if($('gOn').checked){
+      if(raw===''||!Number.isFinite(v)) msg='请填写有效数字';
+      else if(v<mn||v>mx) msg=`只能填 ${mn}–${mx}`;
+    }
+    el.classList.toggle('bad',!!msg);
+    el.setAttribute('aria-invalid',String(!!msg));
+    e.textContent=msg?name+'：'+msg:''; e.style.display=msg?'':'none';
+    if(msg) errs.push(name+'：'+msg);
+  });
+  return errs;
+}
+function sizeGuess(p){
+  const shape=baseShape(p.shape), pmf=shape==='rect'?0:(shape==='side'?1:2);
+  const pleat=shape==='side'?Math.max(2,p.P):p.P;
+  const modRows=pleat+2*p.S-3;
+  const initialN=shape==='rect'?p.N:(p.tip?1:p.N);
+  const gain=shape==='side'?pleat/2:p.S;
+  const maxN=shape==='rect'?p.N:initialN+(shape==='side'?Math.ceil(p.M*gain/p.S):pmf*p.M);
+  const Wc=p.S*(maxN+1)+1;
+  /* 基础行与尖角段也占渲染空间；收尖最多每两行减两针，取安全上界。 */
+  const tipRows=p.tip&&shape!=='rect'?2*(p.S*(initialN+1)-2)/pmf:0;
+  const rows=1+p.M*modRows+tipRows;
+  return {cells:Wc*rows, Wc, rows};
+}
+
+function run(){
+  const shape=baseShape(shapeV()), tipOn=$('tip').checked && shape!=='rect';
+  $('tip').disabled=shape==='rect';
+  $('tip').closest('label').style.display=shape==='rect'?'none':'block';
+  $('tiphint').style.display=tipOn?'':'none';
+  $('N').disabled=tipOn;
+  if(!tipOn){ $('Nv').textContent=''; $('Nv').className='hint'; }
+  const errs=validate(), vb=$('vnote');
+  if(errs.length){
+    vb.style.display='';
+    vb.innerHTML='<b>参数填错了，下面的图解保持上一版不变。</b><br>'+errs.join('；')+'。改对之后会立刻重新生成。';
+    return;
+  }
+  const p=params(), sg=sizeGuess(p);
+  if(sg.cells>6e6){
+    vb.style.display='';
+    vb.innerHTML='<b>这组参数算出来的织图太大了</b>（约 '+sg.Wc+' 针 × '+sg.rows+' 行），生成会把浏览器卡住，所以没有执行，图解保持上一版不变。请把折面宽、折线数或模块数调小一些。';
+    return;
+  }
+  vb.style.display=sg.cells>1.5e6?'':'none';
+  if(sg.cells>1.5e6) vb.innerHTML='<b>规模较大</b>，约 '+sg.Wc+' 针 × '+sg.rows+' 行，图解会很长，生成和滚动都会偏慢。';
+
+  PAT=build(p);
+  PAT.budget=chartBudget();
+  const rows=PAT.rows, last=rows[rows.length-1];
+  const total=rows.reduce((a,r)=>a+r.n,0);
+  const gOn=$('gOn').checked, gSt=+$('gSt').value, gRw=+$('gRw').value;
+  const sw=gOn?10/gSt:null, rh=gOn?10/gRw:null;
+  const stats=[
+    ['起针',PAT.co+' 针'],
+    ['最终针数',last.n+' 针'],
+    ['总行数',rows.length+' 行'],
+    ['模块行数',PAT.modRows+' 行'],
+    ['之字段',(2*PAT.S-3)+' 行'],
+    ['折线数',(PAT.shape==='rect'?PAT.finalN:PAT.startN+'→'+PAT.endN)+' 条'],
+  ];
+  if(gOn){
+    stats.push(['成品宽',(last.n*sw).toFixed(0)+' cm']);
+    stats.push(['成品长',(rows.length*rh).toFixed(0)+' cm']);
+    stats.push(['约用线',Math.round(total*3.2*sw/100)+' m']);
+  }
+  $('stats').innerHTML=stats.map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const pn=$('pnote');
+  if(PAT.noteMsg){pn.style.display='';pn.textContent=PAT.noteMsg;} else pn.style.display='none';
+
+  const yb=$('yarnbox');
+  if(gOn && PAT.shape!=='rect'){
+    let acc=0,lines=[];
+    for(let m=1;m<=PAT.MOD;m++){
+      const sub=rows.filter(r=>r.m<=m);
+      acc=sub.reduce((a,r)=>a+r.n,0);
+      const l=sub[sub.length-1];
+      lines.push(`模块 ${m} → ${l.n} 针 · 宽 ${(l.n*sw).toFixed(0)}cm · 长 ${(sub.length*rh).toFixed(0)}cm · 累计约 ${Math.round(acc*3.2*sw/100)} m`);
+    }
+    yb.style.display='';
+    yb.innerHTML='<b>线量反推</b>（由下往上织，线用完就能停，任何模块织完都是完整图案）<br>'+lines.join('<br>')+'<br><span style="color:var(--muted)">用线量为粗估，误差约 ±15%，受线材、手劲影响很大。</span>';
+  } else yb.style.display='none';
+
+  const NvEl=$('Nv');
+  NvEl.textContent=tipOn?(' 尖角模式下实际 '+(PAT.shape==='tri'||PAT.shape==='side'?PAT.endN:PAT.startN)+' 条。'):'';
+  NvEl.className=tipOn?'hint on':'hint';
+
+  const cm=document.querySelector('#cmode .on').dataset.v;
+  CHART=drawChart(PAT,cm);
+  $('chart').innerHTML=CHART.svg;
+  applyZoom();
+
+  const cn=$('clipnote');
+  if(cm==='one'){
+    let t=CHART.digestNote;
+    if(CHART.zoned){
+      const grow=PAT.shape!=='tridn';
+      t+=`<br><b>横向靠记号扣分段</b>：绿色虚线是记号扣，红框只圈<b>一个</b> ${2*PAT.S} 针的重复单元 —— 织的时候重复到记号扣为止，不用数总针数。记号扣以外是${grow?'加':'减'}针区，每个模块都在变。`;
+    } else if(CHART.clip){
+      t+=`<br>横向也只画了两端，中间省略了 ${CHART.reps-2} 组重复。之字段斜线在省略处看着是断的，实际织时连成一片。`;
+    }
+    t+='　完整内容切到「展开全部」。';
+    cn.innerHTML=t; cn.style.display='';
+  } else { cn.innerHTML=''; cn.style.display='none'; }
+
+  $('txtout').innerHTML=drawText(PAT,cm);
+  drawSim(PAT,0.62);
+}
+function modLast(m){const a=PAT.rows.filter(r=>r.sect==='mod'&&r.m===m);return a[a.length-1]||PAT.rows[PAT.rows.length-1];}
+
+['S','N','P','M','gSt','gRw'].forEach(id=>$(id).addEventListener('input',run));
+$('tip').addEventListener('change',run);
+$('gOn').addEventListener('change',()=>{$('gBox').style.display=$('gOn').checked?'flex':'none';run();});
+document.querySelectorAll('#shape button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#shape button').forEach(x=>x.classList.remove('on'));b.classList.add('on');run();}));
+document.querySelectorAll('#cmode button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#cmode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');run();}));
+document.querySelectorAll('#zmode button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#zmode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  ZM=b.dataset.v; applyZoom();}));
+$('tabC').addEventListener('click',()=>{$('tabC').classList.add('on');$('tabT').classList.remove('on');$('paneC').style.display='';$('paneT').style.display='none';});
+$('tabT').addEventListener('click',()=>{$('tabT').classList.add('on');$('tabC').classList.remove('on');$('paneT').style.display='';$('paneC').style.display='none';});
+$('resetView').addEventListener('click',()=>{yaw=-0.30;pitch=0.55;drawSim(PAT,0.62);});
+const cv=$('sim');
+function dstart(e){drag={x:(e.touches?e.touches[0].clientX:e.clientX),y:(e.touches?e.touches[0].clientY:e.clientY),yaw,pitch};}
+function dmove(e){if(!drag)return;e.preventDefault();
+  const x=(e.touches?e.touches[0].clientX:e.clientX),y=(e.touches?e.touches[0].clientY:e.clientY);
+  yaw=drag.yaw+(x-drag.x)*0.006; pitch=Math.max(-0.2,Math.min(1.45,drag.pitch+(y-drag.y)*0.005));
+  drawSim(PAT,0.62);}
+function dend(){drag=null;}
+cv.addEventListener('mousedown',dstart);window.addEventListener('mousemove',dmove);window.addEventListener('mouseup',dend);
+cv.addEventListener('touchstart',dstart,{passive:true});cv.addEventListener('touchmove',dmove,{passive:false});cv.addEventListener('touchend',dend);
+function wmark(ctx,W,H){
+  ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle='#26324B';
+  ctx.font='600 22px -apple-system,"PingFang SC",sans-serif';
+  ctx.translate(W/2,H/2); ctx.rotate(-Math.PI/9); ctx.translate(-W/2,-H/2);
+  const t='翡晔楼 · Origami Stitch Studio';
+  const tw=ctx.measureText(t).width+140;
+  for(let y=-H;y<H*2;y+=120) for(let x=-W;x<W*2;x+=tw) ctx.fillText(t,x,y);
+  ctx.restore();
+}
+function stamp(ctx,W,H,foot,sub){
+  ctx.save(); ctx.textAlign='center';
+  ctx.fillStyle='#B05A3C'; ctx.font='700 16px "Songti SC","Noto Serif SC",serif';
+  ctx.fillText('折纸编织图解生成器 · Origami Stitch Studio',W/2,H-foot+22);
+  ctx.fillStyle='#7d8494'; ctx.font='13px -apple-system,"PingFang SC",sans-serif';
+  ctx.fillText(sub,W/2,H-foot+44);
+  ctx.fillText('© 2026 翡晔楼 · 小红书 @翡晔楼 · 仅供个人使用，禁止商用',W/2,H-foot+64);
+  ctx.restore();
+}
+function save(cv,name){ cv.toBlob(b=>{const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png'); }
+function subline(){
+  const sh={rect:'长方形A',rectb:'长方形B',tri:'三角形▽',tridn:'三角形△',
+             side:'单边左加针',sider:'单边右加针'}[PAT.variant]||PAT.variant;
+  return `折面宽 ${PAT.S} 针 · 折线 ${PAT.finalN} 条 · 平褶段 ${PAT.pleat} 行 · ${sh} · ${PAT.MOD} 个模块 · 共 ${PAT.rows.length} 行`;
+}
+function exportName(kind,pat,mode){
+  const sh={rect:'长方形A',rectb:'长方形B',tri:'三角形起针',tridn:'三角形收针',side:'单边左加针',sider:'单边右加针'}[pat.variant];
+  const tip=pat.shape==='rect'?'':pat.tip?'_尖角':'_非尖角';
+  return `折纸编织${kind}_${sh}_S${pat.S}_N${pat.finalN}_P${pat.pleat}_M${pat.MOD}${tip}_${mode==='one'?'摘要':'完整'}.png`;
+}
+$('dlChart').addEventListener('click',()=>{
+  const btn=$('dlChart'); btn.textContent='生成中…';
+  const name=exportName('图解',PAT,document.querySelector('#cmode .on').dataset.v), sub=subline();
+  const blob=new Blob([CHART.svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob); const img=new Image();
+  img.onload=()=>{
+    const sc=Math.min(2.2,Math.max(1.2,1600/img.width));
+    const pad=22, foot=84, W=Math.round(img.width*sc), H=Math.round(img.height*sc);
+    const cv=document.createElement('canvas'); cv.width=W+pad*2; cv.height=H+pad+foot;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.drawImage(img,pad,pad,W,H);   // 水印已经画在 SVG 里，这里不再叠
+    stamp(ctx,cv.width,cv.height,foot,sub);
+    save(cv,name);
+    URL.revokeObjectURL(url); btn.textContent='⬇ 下载图解 PNG';
+  };
+  img.onerror=()=>{btn.textContent='生成失败';};
+  img.src=url;});
+
+$('dlTxt').addEventListener('click',()=>{
+  const btn=$('dlTxt'); btn.textContent='生成中…';
+  const cm=document.querySelector('#cmode .on').dataset.v;
+  const items=textItems(PAT,cm);           // 与屏幕上看到的一致
+  const FS=15, LH=23, colW=620, gap=40, pad=34, foot=90, headH=96;
+  const mc=document.createElement('canvas').getContext('2d');
+  const wrap=(txt,f)=>{ mc.font=f; const out=[]; let line='';
+    for(const ch of txt){ if(mc.measureText(line+ch).width>colW){out.push(line);line=ch;} else line+=ch; }
+    if(line)out.push(line); return out; };
+  const fN=`${FS}px -apple-system,"PingFang SC",sans-serif`,
+        fB=`700 ${FS}px "Songti SC","Noto Serif SC",serif`,
+        fH=`700 ${FS+2}px "Songti SC","Noto Serif SC",serif`;
+  const flat=[];
+  items.forEach(it=>{
+    if(it.h===2){ if(flat.length){flat.push({h:0,s:''});} flat.push({h:2,s:it.s}); flat.push({h:0,s:''}); return; }
+    if(it.h===1){ if(flat.length)flat.push({h:0,s:''}); flat.push({h:1,s:it.s}); return; }
+    if(it.h===3){ wrap(it.s,fN).forEach(l=>flat.push({h:3,s:l})); flat.push({h:0,s:''}); return; }
+    wrap(it.s,fN).forEach((l,i)=>flat.push({h:0,s:l,ind:i>0})); });
+  let cols=2, rowsPerCol=Math.ceil(flat.length/cols);
+  while(rowsPerCol*LH>3400 && cols<4){ cols++; rowsPerCol=Math.ceil(flat.length/cols); }
+  const W=pad*2+cols*colW+(cols-1)*gap;
+  const H=pad+headH+rowsPerCol*LH+16+foot;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center'; ctx.fillStyle='#26324B';
+  ctx.font='700 26px "Songti SC","Noto Serif SC",serif';
+  ctx.fillText('折纸编织 · 文字解'+(cm==='one'?'（摘要：逐行＋重复＋逐行）':'（逐行完整版）'),W/2,pad+30);
+  ctx.font='14px -apple-system,"PingFang SC",sans-serif'; ctx.fillStyle='#7d8494';
+  ctx.fillText(subline(),W/2,pad+54);
+  ctx.fillText('交叉针写成右交叉／左交叉（＝英式 1/1 RC／1/1 LC，不是 RT／LT 那种拧针），与日式「左上／右上1目交差」命名相反。名称与图上方向一致，反面行照图同方向织，两针都织下针。',W/2,pad+76);
+  ctx.textAlign='left';
+  flat.forEach((l,i)=>{
+    const ci=Math.floor(i/rowsPerCol), ri=i%rowsPerCol;
+    const x=pad+ci*(colW+gap)+(l.ind?16:0), y=pad+headH+ri*LH+FS;
+    if(l.h===2){ ctx.fillStyle='#26324B'; ctx.font=fH;
+      ctx.fillRect(x-6,y-FS-3,colW+12,1.5); ctx.fillStyle='#26324B'; }
+    else if(l.h===1){ctx.fillStyle='#B05A3C';ctx.font=fB;}
+    else if(l.h===3){ctx.fillStyle='#7a4a34';ctx.font=fN;}
+    else {ctx.fillStyle='#26324B';ctx.font=fN;}
+    ctx.fillText(l.s,x,y);
+  });
+  wmark(ctx,W,H); stamp(ctx,W,H,foot,subline());
+  save(cv,exportName('文字解',PAT,cm));
+  btn.textContent='⬇ 下载文字解 PNG';});
+
+$('legend').innerHTML=legendHtml();
+$('schem').innerHTML=SCHEM;
+/* 窗口大小变了、手机横竖屏转了：立体模拟和图解都要跟着重算。
+   重算图解偏重，所以做了防抖，而且宽度变化不到 40px 就只更新缩放提示。 */
+let rsT=null;
+function onResize(){
+  if(!PAT) return;
+  drawSim(PAT,0.62);
+  const w=chartBudget();
+  if(Math.abs(w-lastW)>=40){ lastW=w; run(); } else applyZoom();
+}
+window.addEventListener('resize',()=>{ clearTimeout(rsT); rsT=setTimeout(onResize,220); });
+window.addEventListener('orientationchange',()=>{ clearTimeout(rsT); rsT=setTimeout(onResize,320); });
+run();
+lastW=chartBudget();
+</script>
+</body>
+</html>
