@@ -2,9 +2,9 @@
 
 设置折面宽、折线数、平褶段和模块数，选择形状，自动生成折纸编织的图解、逐行文字解与立体模拟。
 
-**在线使用：** 部署完成后补充
+**在线使用：** https://origami-stitch-studio.pages.dev/
 
-**编织工具箱：** 部署完成后补充
+**编织工具箱：** https://knitting-toolbox.pages.dev/
 
 ## 功能
 
